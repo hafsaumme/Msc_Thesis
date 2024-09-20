@@ -1,4 +1,4 @@
-setwd("C:/Users/ummeh/Dropbox/UH_MSc_Thesis/code")
+
 
 library(dplyr)
 library(Seurat)
@@ -52,7 +52,7 @@ obj.bcell.healthy <- SCTransform(obj.bcell.healthy, method = "glmGamPoi",
 
 #RDS file of Bcells
 
-obj.all.four=(readRDS("./rstudio-export/obj.all.four.bcell.rds"))
+obj.all.four=(readRDS("obj.all.four.bcell.rds"))
 
 #....................INTEGRATION on hcc , icca, healthy and cirrhotic datasets...............
 
@@ -170,15 +170,15 @@ for(j in unique(sctype_scores$cluster)){
   obj.all.four@meta.data$customclassif[obj.all.four@meta.data$seurat_clusters == j] = as.character(cl_type$type[1])
 }
 
-#View(combined@meta.data)
+
 DimPlot(obj.all.four, reduction = "umap", label = TRUE, repel = TRUE) 
 
 #do integration of B cells from all sources or read prepared RDS file from directory
 obj.all.four=(readRDS("./rstudio-export/obj.all.four.bcell.rds"))
 # Rename all identities
 obj.all.four <- RenameIdents(object = obj.all.four, 
-                             "0" = "Naïve Bcells",
-                             "1" = "Naïve Bcells",
+                             "0" = "NaÃ¯ve Bcells",
+                             "1" = "NaÃ¯ve Bcells",
                              "2" = "Memory Bcells",
                              "3" = "Plasma cells",
                              "4" = "Memory Bcells",
@@ -244,6 +244,7 @@ HSMM2 <- reduceDimension(HSMM2, norm_method="none",
                          pseudo_expr=0)
 
 pData(HSMM2)$celltype=obj.all.four@meta.data$customclassif
+pData(HSMM2)$source=obj.all.four@meta.data$orig.ident
 
 HSMM2 <- orderCells(HSMM2)
 
@@ -260,7 +261,9 @@ plot_cell_trajectory(HSMM2,
 
 plot_cell_trajectory(HSMM2, color_by = "Pseudotime",cell_size = 1) 
 
-plot_cell_trajectory(HSMM2, color_by = "orig.ident",cell_size = 1)
+plot_cell_trajectory(HSMM2, color_by = "celltype",cell_size = 1)
+
+plot_cell_trajectory(HSMM2, color_by = "source",cell_size = 1)
 
 
 # DifferentialGeneTest for pseudotime
@@ -282,9 +285,7 @@ sig_gene_names <- row.names(subset(diff_test_res, qval <0.01))
 plot_genes_branched_heatmap(HSMM2[sig_gene_names,],
                             
                             num_clusters = 5,
-                            cores = 1,
-                            return_heatmap = T)
-
+                            cores = 1)
 
 t=plot_genes_branched_heatmap(HSMM2[sig_gene_names,],
                               
@@ -293,6 +294,7 @@ t=plot_genes_branched_heatmap(HSMM2[sig_gene_names,],
                               return_heatmap = T)
 
 cluster_1_3_5=filter((t$annotation_row), Cluster%in%c(1,3,5))
+
 #------------Pseudotemporal Expression Pattern
 
 plot_genes_in_pseudotime(HSMM2[c("IGKC","JCHAIN","IGHG1","IGHG2", "IGHG3","IGHG4"),],ncol=2,color_by = "orig.ident")
@@ -345,13 +347,14 @@ gse <- gseGO(geneList=sort(logFC_score, decreasing = T),
              ont ="BP", 
              pvalueCutoff = 0.05,
              verbose = TRUE,
+             scoreType = "pos",
              OrgDb = org.Hs.eg.db
 )
 
 
 
 gse=gse%>%arrange(desc(enrichmentScore))
-go_result= gse@result
+go_result= gse@result[1:20,]
 go_result$GeneRatio=go_result$enrichmentScore
 
 
@@ -377,14 +380,13 @@ ggplot(go_result,aes(
 
 
 
-
 # Prognosis value of B cell subtypes===============
 
 library(readxl)
 
 subtypes_marker = obj.all.four_marker
 
-LIHC_mrna <- read_excel("C:/Users/ummeh/Dropbox/UH_MSc_Thesis/LIHC_mrna.xlsx")
+LIHC_mrna <- read_excel("LIHC_mrna.xlsx")
 
 subtypes_marker=filter(subtypes_marker, gene %in% LIHC_mrna$`Updated Name`)
 
